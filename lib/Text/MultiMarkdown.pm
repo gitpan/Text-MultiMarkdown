@@ -29,7 +29,7 @@ use warnings;
 use Digest::MD5 qw(md5_hex);
 use base 'Exporter';
 
-our $VERSION = '1.0.0';
+our $VERSION = '1.0.1';
 our @EXPORT_OK = qw/markdown/;
 
 our ($g_document_format);
@@ -50,22 +50,6 @@ our ($g_document_format);
 #
 my $g_empty_element_suffix = " />";     # Change to ">" for HTML output
 my $g_tab_width = 4;
-
-sub new { bless {} }
-
-sub markdown {
-    my ( $self, $text, $options ) = @_;
-    unless (ref $self) {
-        $options = $text;
-        $text = $self;
-    }
-    $options ||= {};
-    $g_document_format = $options->{document_format} || "";
-    $g_empty_element_suffix = $options->{empty_element_suffix}
-        if $options->{empty_element_suffix};
-    $g_tab_width = $options->{tab_width} if $options->{tab_width};
-    return Markdown($text);
-}
 
 #
 # Globals:
@@ -126,6 +110,41 @@ my $g_temp_no_wikiwords = 0;
 # (see _ProcessListItems() for details):
 my $g_list_level = 0;
 
+
+sub new { bless {} }
+
+sub markdown {
+    my ( $self, $text, $options ) = @_;
+    unless (ref $self) {
+        $options = $text;
+        $text = $self;
+    }
+    $options ||= {};
+    $g_document_format = $options->{document_format} || "";
+    $g_empty_element_suffix = $options->{empty_element_suffix}
+        if $options->{empty_element_suffix};
+    $g_tab_width = $options->{tab_width} if $options->{tab_width};
+
+    # Clear the global hashes. If we don't clear these, you get conflicts
+    # from other articles when generating a page which contains more than
+    # one article (e.g. an index page that shows the N most recent
+    # articles):
+    %g_urls            = ();
+    %g_titles          = ();
+    %g_html_blocks     = ();
+    %g_metadata        = ();
+    %g_crossrefs       = ();
+    %g_footnotes       = ();
+    @g_used_footnotes  = ();
+    @g_used_references = ();
+
+    %g_urls        = %{$options->{urls}}        if $options->{urls};
+    %g_titles      = %{$options->{titles}}      if $options->{titles};
+    %g_html_blocks = %{$options->{html_blocks}} if $options->{html_blocks};
+
+    return Markdown($text);
+}
+
 sub Markdown {
 #
 # Main function. The order in which other subs are called here is
@@ -134,20 +153,6 @@ sub Markdown {
 # and <img> tags get encoded.
 #
     my $text = shift;
-
-    # Clear the global hashes. If we don't clear these, you get conflicts
-    # from other articles when generating a page which contains more than
-    # one article (e.g. an index page that shows the N most recent
-    # articles):
-    %g_urls = ();
-    %g_titles = ();
-    %g_html_blocks = ();
-    %g_metadata = ();
-    %g_crossrefs = ();
-    %g_footnotes = ();
-    @g_used_footnotes = ();
-    @g_used_references = ();
-
 
     # Standardize line endings:
     $text =~ s{\r\n}{\n}g;  # DOS to Unix
@@ -2109,12 +2114,7 @@ you expected; (3) the output Markdown actually produced.
 
 =head1 VERSION HISTORY
 
-See the readme file for detailed release notes for this version.
-
-1.0.1 - 14 Dec 2004
-
-1.0 - 28 Aug 2004
-
+See the Changes file for detailed release notes for this version.
 
 =head1 AUTHOR
 
