@@ -148,7 +148,7 @@ use Digest::MD5 qw(md5_hex);
 use Carp        qw(croak);
 use base        'Exporter';
 
-our $VERSION   = '1.0.4';
+our $VERSION   = '1.0.5';
 our @EXPORT_OK = qw(markdown);
 
 ## Disabled; causes problems under Perl 5.6.1:
@@ -188,7 +188,6 @@ my %g_crossrefs = ();
 my %g_footnotes = ();
 my %g_attributes = ();
 my @g_used_footnotes = ();
-my $g_footnote_counter = 0;
 
 my $g_citation_counter = 0;
 my @g_used_references = ();
@@ -546,15 +545,16 @@ sub _RunBlockGamut {
 #
     my ($self, $text) = @_;
 
+    # Do headers first, as these populate cross-refs
+    $text = $self->_DoHeaders($text);
+    
     # Do tables first to populate the table id's for cross-refs
+    # (but after headers as the tables can contain cross-refs to other things, so we want the header cross-refs)
     # Escape <pre><code> so we don't get greedy with tables
     $text = $self->_DoTables($text);
     
     # And now, protect our tables
     $text = $self->_HashHTMLBlocks($text);
-
-
-    $text = $self->_DoHeaders($text);
 
     # Do Horizontal Rules:
     $text =~ s{^[ ]{0,2}([ ]?\*[ ]?){3,}[ \t]*$}{\n<hr$self->{empty_element_suffix}\n}gmx;
@@ -693,7 +693,7 @@ sub _DoAnchors {
             my $url = $g_crossrefs{$label};
             $url =~ s! \* !$g_escape_table{'*'}!gx;     # We've got to encode these to avoid
             $url =~ s!  _ !$g_escape_table{'_'}!gx;     # conflicting with italics/bold.
-            $result = "<a href=\"$url\"";
+            $result = qq[<a href="$url"];
             if ( defined $g_titles{$label} ) {
                 my $title = $g_titles{$label};
                 $title =~ s! \* !$g_escape_table{'*'}!gx;
@@ -748,7 +748,7 @@ sub _DoAnchors {
         my $link_text   = $2;
         my $url         = $3;
         my $title       = $6;
-
+        
         $url =~ s! \* !$g_escape_table{'*'}!gx;     # We've got to encode these to avoid
         $url =~ s!  _ !$g_escape_table{'_'}!gx;     # conflicting with italics/bold.
         $result = "<a href=\"$url\"";
@@ -1553,7 +1553,7 @@ sub _ParseMetaData { # FIXME - This is really really ugly!
             if ($line =~ /^([a-zA-Z0-9][0-9a-zA-Z _-]+?):\s*(.*)$/ ) {
                 $currentKey = $1;
                 $currentKey =~ s/  / /g;
-                $self->{_metadata}{lc($currentKey)} = $2;
+                $self->{_metadata}{$currentKey} = defined $2 ? $2 : '';
                 if (lc($currentKey) eq "format") {
                     $self->{document_format} = $self->{_metadata}{$currentKey};
                 }
@@ -1617,11 +1617,14 @@ sub _DoFootnotes {
     foreach my $label (sort keys %g_footnotes) {
         my $footnote = $self->_RunBlockGamut($g_footnotes{$label});
 
-        # strip leading <p> tag (it will be added later)
-        $footnote =~ s/^\<p\>//s;
+        # strip leading and trailing <p> tags (they will be added later)
+        $footnote =~ s/^<p>//s;
+        $footnote =~ s/<\/p>$//s;
         $footnote = $self->_DoMarkdownCitations($footnote);
         $g_footnotes{$label} = $footnote;
     }
+    
+    my $footnote_counter = 0;
     
     $text =~ s{
         \[\^(.*?)\]     # id = $1
@@ -1631,8 +1634,8 @@ sub _DoFootnotes {
         
         if (defined $g_footnotes{$id} ) {
 #           $result = "<footnote>$g_footnotes{$self->Header2Label($id)}</footnote>"
-            $g_footnote_counter++;
-            $result = qq{<a href="#$id" name="f$id" class="footnote">$g_footnote_counter</a>};
+            $footnote_counter++;
+            $result = qq{<a href="#$id" id="f$id" class="footnote">$footnote_counter</a>};
             push (@g_used_footnotes,$id);
         }
         $result;
@@ -1656,12 +1659,12 @@ sub _PrintFootnotes {
     
     foreach my $id (@g_used_footnotes) {
         $footnote_counter++;
-        $result .= qq[<div id="$id"><p><a href="#f$id" class="reversefootnote">$footnote_counter.</a> $g_footnotes{$id}</div>\n\n];
+        #$result .= qq[<div id="$id"><p><a href="#f$id" class="reversefootnote">$footnote_counter.</a> $g_footnotes{$id}</div>\n\n];
+        $result .= qq[<li id="$id"><p>$g_footnotes{$id}<a href="#f$id" class="reversefootnote">&#160;&#8617;</a></p></li>\n\n];
     }
-    $result .= "</div>";
 
     if ($footnote_counter > 0) {
-        $result = qq[\n\n<div class="footnotes">\n<hr$self->{empty_element_suffix}\n<p>Footnotes:</p>\n\n] . $result;
+        $result = qq[\n\n<div class="footnotes">\n<hr$self->{empty_element_suffix}\n<ol>\n\n] . $result . "</ol>\n</div>";
     } else {
         $result = "";
     }   
@@ -1748,9 +1751,10 @@ sub _ConvertCopyright{
 
 sub _UseWikiLinks {
     my ($self) = @_;
-    if ($self->{use_wikilinks} or $self->{_metadata}{'use wikilinks'}) {
-        return 1;
-    }
+    return 1 if $self->{use_wikilinks};
+    my ($k) = grep { /use wikilinks/i } keys %{$self->{_metadata}};
+    return unless $k;
+    return 1 if $self->{_metadata}{$k};
     return;
 }
 
@@ -1764,8 +1768,8 @@ sub _CreateWikiLink {
         $id =~ s/_$//;
 
     $title =~ s/_/ /g;
-        
-    return "[$title]($self->{base_url}$id)";
+    
+    return "[$title](" . $self->{base_url} . "$id)";
 }
 
 sub _DoWikiLinks {
@@ -1885,7 +1889,8 @@ sub _DoTables {
                 
                 $g_crossrefs{$table_id} = "#$table_id";
                 $g_titles{$table_id} = "$1";
-            } else {
+            } 
+            else {
                 $result .= "<caption>" . $self->_RunSpanGamut($1). "</caption>\n";
             }
         }
@@ -1919,19 +1924,23 @@ sub _DoTables {
                 if ($cell =~ /^\:/) {
                     $result .= qq[<col align="center"$self->{empty_element_suffix}\n];
                     push(@alignments,"center");
-                } else {
+                } 
+                else {
                     $result .= qq[<col align="right"$self->{empty_element_suffix}\n];
                     push(@alignments,"right");
                 }
-            } else {
+            } 
+            else {
                 if ($cell =~ /^\:/) {
                     $result .= qq[<col align="left"$self->{empty_element_suffix}\n];
                     push(@alignments,"left");
-                } else {
+                } 
+                else {
                     if (($cell =~ /^\./) || ($cell =~ /\.$/)) {
                         $result .= qq[<col align="char"$self->{empty_element_suffix}\n];
                         push(@alignments,"char");
-                    } else {
+                    } 
+                    else {
                         $result .= "<col$self->{empty_element_suffix}\n";
                         push(@alignments,"");
                     }
@@ -2112,7 +2121,8 @@ sub _DoMarkdownCitations {
             }
             
             $result .= ")</span>";
-        } else {
+        } 
+        else {
             # No reference exists
             $result = qq[<span class="externalcitation"> (<a id="$id">$id</a>];
 
@@ -2140,7 +2150,7 @@ sub _PrintMarkdownBibliography {
     
     foreach my $id (@g_used_references) {
         $citation_counter++;
-        $result .= q|<div id="$id"><p>[$citation_counter] <span class="item">$g_references{$id}</span></p></div>\n\n|;
+        $result .= qq|<div id="$id"><p>[$citation_counter] <span class="item">$g_references{$id}</span></p></div>\n\n|;
     }
     $result .= "</div>";
 
