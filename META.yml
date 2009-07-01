@@ -26,9 +26,9 @@ no_index:
 requires:
   Digest::MD5: 0
   Encode: 0
-  Text::Balanced: 0
+  Text::Markdown: 1.0.24
   perl: 5.8.0
 resources:
   license: http://opensource.org/licenses/bsd-license.php
   repository: http://bobtfish.github.com/text-multimarkdown/tree/master
-version: 1.0.25
+version: 1.0.26
