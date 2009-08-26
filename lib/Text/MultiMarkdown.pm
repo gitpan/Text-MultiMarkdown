@@ -9,7 +9,7 @@ use Encode      qw();
 use Carp        qw(croak);
 use base        qw(Text::Markdown);
 
-our $VERSION   = '1.0.26';
+our $VERSION   = '1.0.27';
 our @EXPORT_OK = qw(markdown);
 
 =head1 NAME
@@ -659,7 +659,7 @@ sub _DoFootnotes {
     # First, run routines that get skipped in footnotes
     foreach my $label (sort keys %{ $self->{_footnotes} }) {
         my $footnote = $self->_RunBlockGamut($self->{_footnotes}{$label});
-
+        $footnote = $self->_UnescapeSpecialChars($footnote);
         $footnote = $self->_DoMarkdownCitations($footnote);
         $self->{_footnotes}{$label} = $footnote;
     }
@@ -704,10 +704,10 @@ sub _PrintFootnotes {
     foreach my $id (@{ $self->{_used_footnotes} }) {
         $footnote_counter++;
         my $footnote = $self->{_footnotes}{$id};
-        my $footnote_closing_tag = '';
 
         $footnote =~ s/(\<\/(p(re)?|ol|ul)\>)$//;
-        $footnote_closing_tag = $1;
+        my $footnote_closing_tag = $1;
+        $footnote_closing_tag = '' if !defined $footnote_closing_tag;
 
         if ($footnote =~ s/^glossary:\s*//i) {
             # Add some formatting for glossary entries

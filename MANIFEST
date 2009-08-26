@@ -11,6 +11,7 @@ lib/Text/MultiMarkdown.pm
 License.text
 Makefile.PL
 MANIFEST			This list of files
+MANIFEST.skip
 META.yml
 README
 Readme.text
@@ -41,6 +42,7 @@ t/24fulldocs-pythonmarkdown2-tm.t
 t/29fulldocs-maruku-unittest.t
 t/30disable_multimarkdown_features.t
 t/35commandlinemultimarkdown.t
+t/36footnotes.t
 t/docs-maruku-unittest/abbreviations.html
 t/docs-maruku-unittest/abbreviations.text
 t/docs-maruku-unittest/alt.html
