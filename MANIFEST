@@ -295,6 +295,8 @@ t/Text-MultiMarkdown.mdtest/Backslash_escapes.html
 t/Text-MultiMarkdown.mdtest/Backslash_escapes.text
 t/Text-MultiMarkdown.mdtest/Blockquotes_with_code_blocks.html
 t/Text-MultiMarkdown.mdtest/Blockquotes_with_code_blocks.text
+t/Text-MultiMarkdown.mdtest/Citations.text
+t/Text-MultiMarkdown.mdtest/Citations.xhtml
 t/Text-MultiMarkdown.mdtest/complex_escaping.text
 t/Text-MultiMarkdown.mdtest/complex_escaping.xhtml
 t/Text-MultiMarkdown.mdtest/Cross-References.text
@@ -361,4 +363,6 @@ t/Text-MultiMarkdown.mdtest/Warnings-rt34856.text
 t/Text-MultiMarkdown.mdtest/Warnings-rt34856.xhtml
 t/Text-MultiMarkdown.mdtest/Wiki_Features.text
 t/Text-MultiMarkdown.mdtest/Wiki_Features.xhtml
+t/Text-MultiMarkdown.mdtest/XHTML_Headers.text
+t/Text-MultiMarkdown.mdtest/XHTML_Headers.xhtml
 Todo

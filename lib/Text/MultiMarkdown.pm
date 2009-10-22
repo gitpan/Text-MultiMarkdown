@@ -9,7 +9,7 @@ use Encode      qw();
 use Carp        qw(croak);
 use base        qw(Text::Markdown);
 
-our $VERSION   = '1.0.29';
+our $VERSION   = '1.0.30';
 our @EXPORT_OK = qw(markdown);
 
 =head1 NAME
@@ -776,6 +776,9 @@ sub _xhtmlMetaData {
         elsif (lc($key) eq "css") {
             $result.= qq[\t\t<link type="text/css" rel="stylesheet" href="$self->{_metadata}{$key}"$self->{empty_element_suffix}\n];
         }
+		elsif( lc($key) eq "xhtml header") {
+			$result .= qq[\t\t$self->{_metadata}{$key}\n]
+		}
         else {
             $result.= qq[\t\t<meta name="$key" content="$self->{_metadata}{$key}"$self->{empty_element_suffix}\n];
         }
