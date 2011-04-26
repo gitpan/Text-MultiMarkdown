@@ -43,6 +43,7 @@ t/29fulldocs-maruku-unittest.t
 t/30disable_multimarkdown_features.t
 t/35commandlinemultimarkdown.t
 t/36footnotes.t
+t/37deflists.t
 t/docs-maruku-unittest/abbreviations.html
 t/docs-maruku-unittest/abbreviations.text
 t/docs-maruku-unittest/alt.html
