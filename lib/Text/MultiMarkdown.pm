@@ -4,12 +4,13 @@ use strict;
 use warnings;
 use re 'eval';
 
-use Digest::MD5 qw(md5_hex);
-use Encode      qw();
-use Carp        qw(croak);
-use base        qw(Text::Markdown);
+use Digest::MD5    qw(md5_hex);
+use Encode         qw();
+use Carp           qw(croak);
+use base           qw(Text::Markdown);
+use HTML::Entities qw(encode_entities);
 
-our $VERSION   = '1.000034'; # 1.0.34
+our $VERSION   = '1.000035'; # 1.0.34
 $VERSION = eval $VERSION;
 our @EXPORT_OK = qw(markdown);
 
@@ -53,7 +54,7 @@ specifically to serve as a front-end to (X)HTML. You can use span-level
 HTML tags anywhere in a Markdown document, and you can use block level
 HTML tags (C<< <div> >>, C<< <table> >> etc.). Note that by default
 Markdown isn't interpreted in HTML block-level elements, unless you add
-a C<markdown=1"> attribute to the element. See L<Text::Markdown> for 
+a C<markdown=1"> attribute to the element. See L<Text::Markdown> for
 details.
 
 This module implements the MultiMarkdown markdown syntax extensions from:
@@ -150,6 +151,8 @@ Metadata options supported are:
 
 =item base_url
 
+=item self_url - The document url is prepended to the "#" anchor of footnotes.
+
 =back
 
 =head1 METADATA
@@ -227,6 +230,8 @@ sub new {
     $p{img_ids}     = defined $p{img_ids}     ? $p{img_ids}     : 1;
 
     $p{bibliography_title} ||= 'Bibliography'; # FIXME - Test and document, can also be in metadata!
+
+    $p{self_url} ||= ''; # Used in footnotes to prepend anchors
 
     my $self = { params => \%p };
     bless $self, ref($class) || $class;
@@ -757,10 +762,10 @@ sub _DoFootnotes {
         if (defined $self->{_footnotes}{$id} ) {
             $footnote_counter++;
             if ($self->{_footnotes}{$id} =~ /^glossary:/i) {
-                $result = qq{<a href="#fn:$id" id="fnref:$id" class="footnote glossary">$footnote_counter</a>};
+                $result = qq{<a href="$self->{self_url}#fn:$id" id="fnref:$id" class="footnote glossary">$footnote_counter</a>};
             }
             else {
-                $result = qq{<a href="#fn:$id" id="fnref:$id" class="footnote">$footnote_counter</a>};
+                $result = qq{<a href="$self->{self_url}#fn:$id" id="fnref:$id" class="footnote">$footnote_counter</a>};
             }
             push (@{ $self->{_used_footnotes} }, $id);
         }
@@ -810,10 +815,10 @@ sub _PrintFootnotes {
                 $glossary . q{:<p>};
             }egsx;
 
-            $result .= qq{<li id="fn:$id">$footnote<a href="#fnref:$id" class="reversefootnote">&#160;&#8617;</a>$footnote_closing_tag</li>\n\n};
+            $result .= qq{<li id="fn:$id">$footnote<a href="$self->{self_url}#fnref:$id" class="reversefootnote">&#160;&#8617;</a>$footnote_closing_tag</li>\n\n};
         }
         else {
-            $result .= qq{<li id="fn:$id">$footnote<a href="#fnref:$id" class="reversefootnote">&#160;&#8617;</a>$footnote_closing_tag</li>\n\n};
+            $result .= qq{<li id="fn:$id">$footnote<a href="$self->{self_url}#fnref:$id" class="reversefootnote">&#160;&#8617;</a>$footnote_closing_tag</li>\n\n};
         }
     }
 
@@ -857,7 +862,7 @@ sub _xhtmlMetaData {
 
     foreach my $key (sort keys %{$self->{_metadata}} ) {
         if (lc($key) eq "title") {
-            $result.= "\t\t<title>$self->{_metadata}{$key}</title>\n";
+            $result.= "\t\t<title>" . encode_entities($self->{_metadata}{$key}) . "</title>\n";
         }
         elsif (lc($key) eq "css") {
             $result.= qq[\t\t<link type="text/css" rel="stylesheet" href="$self->{_metadata}{$key}"$self->{empty_element_suffix}\n];
@@ -866,7 +871,8 @@ sub _xhtmlMetaData {
 			$result .= qq[\t\t$self->{_metadata}{$key}\n]
 		}
         else {
-            $result.= qq[\t\t<meta name="$key" content="$self->{_metadata}{$key}"$self->{empty_element_suffix}\n];
+            $result.= qq[\t\t<meta name="] . encode_entities($key) . qq[" ]
+                . qq[content="] . encode_entities($self->{_metadata}{$key}) . qq["$self->{empty_element_suffix}\n];
         }
     }
     $result.= "\t</head>\n";
